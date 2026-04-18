@@ -74,9 +74,12 @@ jobs:
           LaraKube Standalone Binaries
           Build Date: ${{ github.event.head_commit.timestamp }}
           Commit: ${{ github.sha }}
+          
+          Download the binary for your platform and move it to `/usr/local/bin/larakube`.
         draft: false
         prerelease: ${{ github.ref_type != 'tag' }}
-        make_latest: ${{ github.ref_type == 'tag' }}
+        make_latest: ${{ github.ref_type == 'tag' && 'true' || 'false' }}
+        generate_release_notes: true
 
     - name: Upload Artifacts (Workflow Run)
       uses: actions/upload-artifact@v4
