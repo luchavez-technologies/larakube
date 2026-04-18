@@ -1,41 +1,40 @@
-<p align="center">
-    <img title="Laravel Zero" height="100" src="https://raw.githubusercontent.com/laravel-zero/docs/master/images/logo/laravel-zero-readme.png" alt="Laravel Zero Logo" />
-</p>
+# 🚀 LaraKube CLI
 
-<p align="center">
-  <a href="https://github.com/laravel-zero/framework/actions"><img src="https://github.com/laravel-zero/laravel-zero/actions/workflows/tests.yml/badge.svg" alt="Build Status" /></a>
-  <a href="https://packagist.org/packages/laravel-zero/framework"><img src="https://img.shields.io/packagist/dt/laravel-zero/framework.svg" alt="Total Downloads" /></a>
-  <a href="https://packagist.org/packages/laravel-zero/framework"><img src="https://img.shields.io/packagist/v/laravel-zero/framework.svg?label=stable" alt="Latest Stable Version" /></a>
-  <a href="https://packagist.org/packages/laravel-zero/framework"><img src="https://img.shields.io/packagist/l/laravel-zero/framework.svg" alt="License" /></a>
-</p>
+LaraKube is a high-performance Kubernetes orchestrator for Laravel, distributed as a **standalone binary** for Linux and macOS.
 
-Laravel Zero was created by [Nuno Maduro](https://github.com/nunomaduro) and [Owen Voke](https://github.com/owenvoke), and is a micro-framework that provides an elegant starting point for your console application. It is an **unofficial** and customized version of Laravel optimized for building command-line applications.
+## 🌟 Key Features
+- **📦 Standalone Binary**: No local PHP or Node.js required. Runs anywhere with Docker and kubectl.
+- **🤖 AI-Native**: Built-in MCP server for orchestration via AI agents (like Gemini or Claude).
+- **🏗 Masterpiece Blueprints**: One-command architecture for complex stacks (Meilisearch, Redis, S3).
+- **💪 Stability-First**: Hardened configurations for Serversideup images and Kubernetes.
 
-- Built on top of the [Laravel](https://laravel.com) components.
-- Optional installation of Laravel [Eloquent](https://laravel-zero.com/docs/database/), Laravel [Logging](https://laravel-zero.com/docs/logging/) and many others.
-- Supports interactive [menus](https://laravel-zero.com/docs/build-interactive-menus/) and [desktop notifications](https://laravel-zero.com/docs/send-desktop-notifications/) on Linux, Windows & MacOS.
-- Ships with a [Scheduler](https://laravel-zero.com/docs/task-scheduling/) and  a [Standalone Compiler](https://laravel-zero.com/docs/build-a-standalone-application/).
-- Integration with [Collision](https://github.com/nunomaduro/collision) - Beautiful error reporting
-- Follow the creator Nuno Maduro:
-    - YouTube: **[youtube.com/@nunomaduro](https://www.youtube.com/@nunomaduro)** — Videos every weekday
-    - Twitch: **[twitch.tv/enunomaduro](https://www.twitch.tv/enunomaduro)** — Streams (almost) every weekday
-    - Twitter / X: **[x.com/enunomaduro](https://x.com/enunomaduro)**
-    - LinkedIn: **[linkedin.com/in/nunomaduro](https://www.linkedin.com/in/nunomaduro)**
-    - Instagram: **[instagram.com/enunomaduro](https://www.instagram.com/enunomaduro)**
-    - Tiktok: **[tiktok.com/@enunomaduro](https://www.tiktok.com/@enunomaduro)**
+## 📥 Quick Install (Mac/Linux)
 
-------
+```bash
+curl -sSL https://larakube.luchtech.dev/install.sh | bash
+```
 
-## Documentation
+## 🛠 Usage
 
-For full documentation, visit [laravel-zero.com](https://laravel-zero.com/).
+### Create a new project
+```bash
+larakube new my-masterpiece
+```
 
-## Support the development
-**Do you like this project? Support it by donating**
+### Deploy to local cluster
+```bash
+larakube up
+```
 
-- PayPal: [Donate](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=66BYDWAT92N6L)
-- Patreon: [Donate](https://www.patreon.com/nunomaduro)
+### AI-Native Diagnostics
+```bash
+larakube doctor --ai
+```
 
-## License
+## 🏗 Architecture
+LaraKube uses a **Dual-Mount** strategy to execute project-specific tasks inside isolated containers, ensuring that your host machine remains clean and your environments are reproducible.
 
-Laravel Zero is an open-source software licensed under the MIT license.
+For more details, visit the [LaraKube Documentation](https://larakube.luchtech.dev).
+
+## 📄 License
+LaraKube is open-source software licensed under the MIT license.

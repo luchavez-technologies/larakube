@@ -92,11 +92,6 @@ trait GeneratesProjectInfrastructure
         $server = ServerVariation::from($serverVariation);
         $containerPort = $server->containerPort();
         $traefikScheme = $server->traefikScheme();
-        $command = '[]';
-
-        if ($server === ServerVariation::FRANKENPHP) {
-            $command = '["php", "artisan", "octane:start", "--server=frankenphp", "--port=8080", "--host=0.0.0.0"]';
-        }
 
         // Calculate Node Command - Added --host so readiness probes can reach port 5173
         $pm = PackageManager::from($context['packageManager'] ?? 'npm');
@@ -125,6 +120,13 @@ trait GeneratesProjectInfrastructure
                 $namespace = $appName.'-local';
             } elseif (str_contains($stub, 'overlays/production')) {
                 $namespace = $appName.'-production';
+            }
+
+            // Calculate environment-aware command
+            $command = '[]';
+            if ($server === ServerVariation::FRANKENPHP) {
+                $watchFlag = str_contains($stub, 'overlays/local') ? ', "--watch"' : '';
+                $command = "[\"php\", \"artisan\", \"octane:start\", \"--server=frankenphp\", \"--port=8080\", \"--host=0.0.0.0\"{$watchFlag}]";
             }
 
             $content = str_replace(

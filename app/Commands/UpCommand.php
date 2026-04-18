@@ -128,9 +128,15 @@ class UpCommand extends Command
         $envPath = getcwd().'/'.$envFile;
 
         if (file_exists($envPath)) {
-            $this->withSpin("Injecting configuration from {$envFile}...", function () use ($namespace, $envPath) {
+            $this->withSpin("Injecting configuration and blueprint...", function () use ($namespace, $envPath) {
                 exec("kubectl create configmap laravel-config -n {$namespace} --from-env-file={$envPath} --dry-run=client -o yaml | kubectl apply -f -");
                 exec("kubectl create secret generic laravel-secrets -n {$namespace} --from-env-file={$envPath} --dry-run=client -o yaml | kubectl apply -f -");
+                
+                // Store the blueprint for resilience
+                $blueprintPath = getcwd().'/.larakube.json';
+                if (file_exists($blueprintPath)) {
+                    exec("kubectl create secret generic larakube-blueprint -n {$namespace} --from-file=.larakube.json={$blueprintPath} --dry-run=client -o yaml | kubectl apply -f -");
+                }
             });
         } else {
             $this->laraKubeError("Environment file {$envFile} not found! Deployment may fail due to missing configuration.");

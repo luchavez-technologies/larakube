@@ -75,4 +75,16 @@ trait InteractsWithGlobalConfig
         $config['email'] = $email;
         $this->setGlobalConfig($config);
     }
+
+    protected function getAiApiKey(): ?string
+    {
+        return $this->getGlobalConfig()['ai_api_key'] ?? env('GEMINI_API_KEY') ?? env('OPENAI_API_KEY');
+    }
+
+    protected function setAiApiKey(string $key): void
+    {
+        $config = $this->getGlobalConfig();
+        $config['ai_api_key'] = $key;
+        $this->setGlobalConfig($config);
+    }
 }

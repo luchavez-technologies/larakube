@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# LaraKube PHP Context-Aware Wrapper
+# Runs PHP commands against the CURRENT project using the Serversideup engine
+
+CLI_DIR=$(cd "$(dirname "$0")" && pwd)
+PROJECT_DIR=$(pwd)
+
+USER_ID=$(id -u)
+GROUP_ID=$(id -g)
+
+docker run --rm -it \
+    -v "$PROJECT_DIR":/app \
+    -v "$CLI_DIR":/larakube \
+    -w /app \
+    -e USER_ID=$USER_ID \
+    -e GROUP_ID=$GROUP_ID \
+    serversideup/php:8.4-cli \
+    php "$@"

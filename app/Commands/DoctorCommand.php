@@ -2,16 +2,19 @@
 
 namespace App\Commands;
 
+use App\Ai\ClusterDoctorAgent;
 use App\Traits\InteractsWithEnvironments;
 use App\Traits\InteractsWithProjectConfig;
 use App\Traits\LaraKubeOutput;
 use LaravelZero\Framework\Commands\Command;
 
+use function Laravel\Prompts\spin;
+
 class DoctorCommand extends Command
 {
     use InteractsWithEnvironments, InteractsWithProjectConfig, LaraKubeOutput;
 
-    protected $signature = 'doctor {--environment=local : The environment to diagnose}';
+    protected $signature = 'doctor {--environment=local : The environment to diagnose} {--ai : Use AI to provide a deep diagnosis of unhealthy pods}';
 
     protected $description = 'Diagnose project and cluster health issues';
 
@@ -26,7 +29,11 @@ class DoctorCommand extends Command
         $this->checkHostsFile();
         $this->checkPortConflicts();
         $this->checkClusterConnectivity();
-        $this->checkPodHealth();
+        $unhealthyPods = $this->checkPodHealth();
+
+        if ($this->option('ai') && ! empty($unhealthyPods)) {
+            $this->performAiDiagnosis($unhealthyPods);
+        }
 
         $this->line('');
         $this->laraKubeInfo('Diagnostic complete!');
@@ -40,11 +47,7 @@ class DoctorCommand extends Command
             $docker = shell_exec('docker --version');
             $kubectl = shell_exec('kubectl version --client');
 
-            if (! $docker || ! $kubectl) {
-                return false;
-            }
-
-            return true;
+            return $docker && $kubectl;
         });
     }
 
@@ -153,8 +156,6 @@ class DoctorCommand extends Command
                 $connection = @fsockopen('127.0.0.1', $port, $errno, $errstr, 0.1);
                 if (is_resource($connection)) {
                     fclose($connection);
-                    // Port is occupied. We need to check if it's LaraKube (Traefik) or something else.
-                    // This is hard to detect perfectly, so we just warn.
                     $conflicts[] = $port;
                 }
             }
@@ -162,7 +163,6 @@ class DoctorCommand extends Command
             if (! empty($conflicts)) {
                 $this->line('');
                 $this->warn('  ⚠ The following ports are already in use on your host: '.implode(', ', $conflicts));
-                $this->info('    💡 If these are not being used by LaraKube/Traefik, they will cause connectivity issues.');
 
                 return false;
             }
@@ -176,9 +176,6 @@ class DoctorCommand extends Command
         $this->task('Checking Cluster Connectivity', function () {
             $output = shell_exec('kubectl cluster-info 2>&1');
             if (str_contains($output, 'Unable to connect') || str_contains($output, 'timeout')) {
-                $this->line('');
-                $this->error('  ✖ Cannot connect to Kubernetes. Is your Docker engine or OrbStack running?');
-
                 return false;
             }
 
@@ -186,52 +183,72 @@ class DoctorCommand extends Command
         });
     }
 
-    protected function checkPodHealth()
+    protected function checkPodHealth(): array
     {
         $environment = $this->option('environment');
         $namespace = $this->getNamespace($environment);
+        $unhealthyPods = [];
 
-        $this->task("Checking Project Pods ({$namespace})", function () use ($namespace) {
+        $this->task("Checking Project Pods ({$namespace})", function () use ($namespace, &$unhealthyPods) {
             $output = shell_exec("kubectl get pods -n {$namespace} -o json 2>/dev/null");
             if (! $output) {
-                $this->warn("  ⚠ No pods found in namespace '{$namespace}'. Is the app running?");
-
                 return false;
             }
 
             $pods = json_decode($output, true)['items'] ?? [];
-            $unhealthyCount = 0;
-
             foreach ($pods as $pod) {
                 $name = $pod['metadata']['name'];
-                $containerStatuses = $pod['status']['containerStatuses'] ?? [];
-
-                foreach ($containerStatuses as $cs) {
-                    $state = $cs['state']['waiting'] ?? null;
-                    if ($state) {
-                        $reason = $state['reason'];
-                        $message = $state['message'] ?? '';
-
-                        $this->line('');
-                        $this->error("  ✖ Pod '{$name}' is unhealthy (Reason: {$reason})");
-
-                        if ($reason === 'CreateContainerConfigError') {
-                            $this->info('    💡 DIAGNOSIS: A required configuration key is missing from your Secret or ConfigMap.');
-                            $this->info("    👉 FIX: Check your .env for commented-out variables and run 'larakube up' again.");
-                        } elseif ($reason === 'CrashLoopBackOff' && str_contains($message, 'PANIC')) {
-                            $this->info('    💡 DIAGNOSIS: Database volume corruption detected.');
-                            $this->info("    👉 FIX: Run 'larakube reset' to clear corrupted data.");
-                        } elseif ($reason === 'CrashLoopBackOff') {
-                            $this->info('    💡 DIAGNOSIS: The application inside the pod is crashing on startup.');
-                            $this->info("    👉 FIX: Run 'larakube logs {$name}' to see the application error.");
-                        }
-
-                        $unhealthyCount++;
-                    }
+                $ready = true;
+                foreach ($pod['status']['containerStatuses'] ?? [] as $cs) {
+                    if (! $cs['ready']) $ready = false;
+                }
+                
+                if (! $ready || $pod['status']['phase'] !== 'Running') {
+                    $unhealthyPods[] = $name;
                 }
             }
 
-            return $unhealthyCount === 0;
+            return empty($unhealthyPods);
         });
+
+        return $unhealthyPods;
+    }
+
+    protected function performAiDiagnosis(array $podNames)
+    {
+        $apiKey = $this->getAiApiKey();
+        
+        if (! $apiKey) {
+            $this->warn('  ⚠ AI API Key not found. Set it with: larakube config --ai-key=YOUR_KEY');
+            return;
+        }
+
+        // Dynamically set the key for the AI SDK
+        config(['ai.providers.gemini.key' => $apiKey]);
+
+        $this->line('');
+        $this->laraKubeInfo('🧠 Performing Deep AI Diagnosis...');
+        $environment = $this->option('environment');
+        $namespace = $this->getNamespace($environment);
+        
+        $config = $this->getProjectConfig(getcwd());
+        $blueprint = json_encode($config, JSON_PRETTY_PRINT);
+
+        foreach ($podNames as $podName) {
+            $this->info("  🔍 Analyzing Pod: {$podName}");
+            
+            $logs = shell_exec("kubectl logs -n {$namespace} {$podName} --tail=50 2>&1");
+            $events = shell_exec("kubectl get events -n {$namespace} --field-selector involvedObject.name={$podName} 2>&1");
+
+            $prompt = "Namespace: {$namespace}\nPod: {$podName}\nBlueprint: {$blueprint}\n\nLogs:\n{$logs}\n\nEvents:\n{$events}";
+
+            $response = spin(function () use ($prompt) {
+                return ClusterDoctorAgent::make()->prompt($prompt);
+            }, 'AI is thinking...');
+
+            $this->line('');
+            $this->line($response->text());
+            $this->line('');
+        }
     }
 }
