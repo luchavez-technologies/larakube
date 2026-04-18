@@ -1,0 +1,8 @@
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_PASSWORD=secretpassword
+      - POSTGRES_DB=laravel
+      - POSTGRES_USER=postgres
+    networks:
+      - laravel

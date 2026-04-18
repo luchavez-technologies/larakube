@@ -1,0 +1,84 @@
+<?php
+
+namespace App\Traits;
+
+trait InteractsWithDocker
+{
+    /**
+     * Get the base Docker run command for a specific type (php or node).
+     */
+    protected function getDockerCommand(string $path, string $type = 'php'): string
+    {
+        if ($type === 'node') {
+            return "docker run --rm --init -v {$path}:/usr/src/app -w /usr/src/app --user root -e npm_config_cache=/tmp/.npm node:22-alpine ";
+        }
+
+        $appName = basename($path);
+        $localImage = "{$appName}:local";
+
+        // Check if we have a local image, otherwise fallback to base
+        $imageExists = shell_exec("docker images -q {$localImage} 2>/dev/null");
+        $image = $imageExists ? $localImage : $this->getProjectPhpImage($path);
+
+        return "docker run --rm --init -v {$path}:/var/www/html -w /var/www/html --user root -e COMPOSER_CACHE_DIR=/dev/null -e COMPOSER_ALLOW_SUPERUSER=1 {$image} ";
+    }
+
+    /**
+     * Build the local project image.
+     */
+    protected function buildImage(string $path, string $appName): void
+    {
+        $this->laraKubeInfo("Building local image '{$appName}:local'...");
+        passthru("docker build -t {$appName}:local -f {$path}/Dockerfile.php {$path}");
+    }
+
+    /**
+     * Get the PHP image string based on project config.
+     */
+    protected function getProjectPhpImage(string $path): string
+    {
+        $configPath = $path.'/.larakube.json';
+        $phpVersion = '8.5';
+        $osSuffix = '-alpine';
+
+        if (file_exists($configPath)) {
+            $config = json_decode(file_get_contents($configPath), true);
+            $phpVersion = $config['phpVersion'] ?? $phpVersion;
+            $os = $config['os'] ?? 'alpine';
+            $osSuffix = $os === 'alpine' ? '-alpine' : '';
+        }
+
+        return "serversideup/php:{$phpVersion}-cli{$osSuffix}";
+    }
+
+    /**
+     * Get the command to install Node.js and NPM based on the image OS.
+     */
+    protected function getNodeInstallationCommand(string $image): string
+    {
+        return str_contains($image, 'alpine')
+            ? 'apk add --no-cache nodejs npm'
+            : 'apt-get update && apt-get install -y nodejs npm';
+    }
+
+    /**
+     * Run a command inside a Docker container.
+     */
+    protected function runInContainer(string $command, string $path, string $type = 'php'): void
+    {
+        $base = $this->getDockerCommand($path, $type);
+        passthru($base."sh -c '{$command}'");
+    }
+
+    /**
+     * Fix file ownership in the project directory back to the host user.
+     */
+    protected function chownToHostUser(string $path): void
+    {
+        $uid = function_exists('posix_getuid') ? posix_getuid() : 1000;
+        $gid = function_exists('posix_getgid') ? posix_getgid() : 1000;
+
+        $image = $this->getProjectPhpImage($path);
+        passthru("docker run --rm --init -v {$path}:/var/www/html -w /var/www/html --user root {$image} chown -R {$uid}:{$gid} .");
+    }
+}

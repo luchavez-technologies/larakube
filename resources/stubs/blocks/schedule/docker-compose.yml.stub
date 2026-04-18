@@ -1,0 +1,10 @@
+  schedule:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+      target: development
+    command: php artisan schedule:work
+    volumes:
+      - .:/var/www/html
+    networks:
+      - laravel

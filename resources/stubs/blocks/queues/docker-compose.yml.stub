@@ -1,0 +1,10 @@
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+      target: development
+    command: php artisan queue:work
+    volumes:
+      - .:/var/www/html
+    networks:
+      - laravel

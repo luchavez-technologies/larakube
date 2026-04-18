@@ -1,0 +1,9 @@
+  mariadb:
+    image: mariadb:10.11
+    environment:
+      - MARIADB_ROOT_PASSWORD=secretpassword
+      - MARIADB_DATABASE=laravel
+      - MARIADB_USER=laravel
+      - MARIADB_PASSWORD=secretpassword
+    networks:
+      - laravel

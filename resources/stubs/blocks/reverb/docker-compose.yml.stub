@@ -1,0 +1,10 @@
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile.php
+      target: development
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    volumes:
+      - .:/var/www/html
+    networks:
+      - laravel

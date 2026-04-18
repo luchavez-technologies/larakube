@@ -1,0 +1,80 @@
+<?php
+
+namespace App\Commands;
+
+use App\Traits\InteractsWithEnvironments;
+use App\Traits\LaraKubeOutput;
+use LaravelZero\Framework\Commands\Command;
+
+class LogsCommand extends Command
+{
+    use InteractsWithEnvironments, LaraKubeOutput;
+
+    /**
+     * The name and signature of the console command.
+     *
+     * @var string
+     */
+    protected $signature = 'logs {service? : Comma-separated services to tail (web, mysql, redis, horizon, reverb, traefik)} 
+                            {--all : Tail all services in the project}
+                            {--environment=local : The environment to target}';
+
+    /**
+     * The console command description.
+     *
+     * @var string
+     */
+    protected $description = 'Tail logs for one or more project services';
+
+    /**
+     * Execute the console command.
+     */
+    public function handle(): int
+    {
+        $this->renderHeader();
+
+        $environment = $this->option('environment');
+        $namespace = $this->getNamespace($environment);
+
+        if ($this->option('all')) {
+            $this->laraKubeInfo("Tailing ALL logs in namespace '{$namespace}'...");
+            passthru("kubectl logs -f -n {$namespace} --all-containers --prefix --max-log-requests=20 --tail=50 --selector='larakube-project'");
+
+            return 0;
+        }
+
+        $serviceInput = $this->argument('service') ?? 'web';
+        $services = explode(',', $serviceInput);
+
+        if (count($services) === 1 && $services[0] === 'traefik') {
+            $this->laraKubeInfo('Tailing Traefik Ingress logs...');
+            passthru('kubectl logs -f deployment/traefik -n traefik');
+
+            return 0;
+        }
+
+        $labels = [];
+        foreach ($services as $service) {
+            $labels[] = match (trim($service)) {
+                'web' => 'laravel-web',
+                'node' => 'laravel-node',
+                'horizon' => 'laravel-horizon',
+                'reverb' => 'laravel-reverb',
+                'mysql' => 'mysql',
+                'postgres' => 'postgres',
+                'redis' => 'redis',
+                'meilisearch' => 'meilisearch',
+                'typesense' => 'typesense',
+                'mailpit' => 'mailpit',
+                default => trim($service)
+            };
+        }
+
+        $labelSelector = 'app in ('.implode(',', $labels).')';
+
+        $this->laraKubeInfo('Tailing logs for ['.implode(', ', $services)."] in namespace '{$namespace}'...");
+        passthru("kubectl logs -f -l '{$labelSelector}' -n {$namespace} --all-containers --prefix --max-log-requests=15 --tail=50");
+
+        return 0;
+    }
+}

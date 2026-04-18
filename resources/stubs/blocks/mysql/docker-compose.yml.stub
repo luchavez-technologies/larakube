@@ -1,0 +1,9 @@
+  mysql:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=secretpassword
+      - MYSQL_DATABASE=laravel
+      - MYSQL_USER=laravel
+      - MYSQL_PASSWORD=secretpassword
+    networks:
+      - laravel

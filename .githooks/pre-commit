@@ -1,0 +1,15 @@
+#!/bin/sh
+
+echo "🎨 [LARAKUBE] Running Laravel Pint to clean up the code..."
+
+# Run Pint from the vendor directory
+./vendor/bin/pint
+
+# Check the exit code of Pint
+if [ $? -ne 0 ]; then
+    echo "❌ [LARAKUBE] Pint found issues that couldn't be automatically fixed. Commit aborted."
+    exit 1
+fi
+
+echo "✅ [LARAKUBE] Code is clean! Proceeding with commit..."
+exit 0

@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Traits;
+
+trait InteractsWithGlobalConfig
+{
+    protected function getGlobalConfigPath(): string
+    {
+        $home = $_SERVER['HOME'] ?? getenv('HOME');
+
+        return $home.'/.larakube/config.json';
+    }
+
+    protected function getGlobalConfig(): array
+    {
+        $path = $this->getGlobalConfigPath();
+        if (file_exists($path)) {
+            return json_decode(file_get_contents($path), true) ?? [];
+        }
+
+        return [];
+    }
+
+    protected function setGlobalConfig(array $config): void
+    {
+        $path = $this->getGlobalConfigPath();
+        $dir = dirname($path);
+
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0700, true);
+        }
+
+        file_put_contents($path, json_encode($config, JSON_PRETTY_PRINT));
+        @chmod($path, 0600); // Secure the file
+    }
+
+    protected function getGhConfigPath(): string
+    {
+        $home = $_SERVER['HOME'] ?? getenv('HOME');
+
+        return $home.'/.larakube/gh-config';
+    }
+
+    protected function getGhDockerCommand(?string $workDir = null): string
+    {
+        $workDir = $workDir ?? getcwd();
+        $configPath = $this->getGhConfigPath();
+
+        if (! is_dir($configPath)) {
+            @mkdir($configPath, 0700, true);
+        }
+
+        return 'docker run --rm -it '.
+               "-v {$workDir}:/work ".
+               "-v {$configPath}:/root/.config/gh ".
+               '-w /work '.
+               'ghcr.io/cli/cli ';
+    }
+
+    protected function getGitHubToken(): ?string
+    {
+        // We'll now rely on the GH CLI's internal state
+        // but we can still keep this for internal helpers if needed
+        return null;
+    }
+
+    protected function getEmail(): ?string
+    {
+        return $this->getGlobalConfig()['email'] ?? null;
+    }
+
+    protected function setEmail(string $email): void
+    {
+        $config = $this->getGlobalConfig();
+        $config['email'] = $email;
+        $this->setGlobalConfig($config);
+    }
+}
