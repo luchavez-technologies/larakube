@@ -3,8 +3,15 @@ name: Build LaraKube CLI
 on:
   push:
     branches: [ "main" ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ "main" ]
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -12,7 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
     - name: Setup PHP 8.4
       uses: shivammathur/setup-php@v2
@@ -55,7 +63,22 @@ jobs:
         # Set permissions
         chmod +x artifacts/*
 
-    - name: Upload Binaries
+    - name: Upload Binaries to Release
+      uses: softprops/action-gh-release@v2
+      if: github.event_name != 'pull_request'
+      with:
+        files: artifacts/*
+        tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'canary' }}
+        name: ${{ github.ref_type == 'tag' && github.ref_name || 'Canary (Main Branch)' }}
+        body: |
+          LaraKube Standalone Binaries
+          Build Date: ${{ github.event.head_commit.timestamp }}
+          Commit: ${{ github.sha }}
+        draft: false
+        prerelease: ${{ github.ref_type != 'tag' }}
+        make_latest: ${{ github.ref_type == 'tag' }}
+
+    - name: Upload Artifacts (Workflow Run)
       uses: actions/upload-artifact@v4
       with:
         name: larakube-binaries
