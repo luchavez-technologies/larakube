@@ -12,8 +12,6 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # Bypass some strict environment issues if needed
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
 jobs:
   build:
@@ -70,7 +68,6 @@ jobs:
       if: github.event_name != 'pull_request'
       with:
         files: artifacts/*
-        # Use a fresh tag strategy for canary
         tag_name: ${{ github.ref_type == 'tag' && github.ref_name || 'canary' }}
         name: ${{ github.ref_type == 'tag' && github.ref_name || 'Canary (Main Branch)' }}
         body: |
@@ -81,8 +78,6 @@ jobs:
           Download the binary for your platform and move it to `/usr/local/bin/larakube`.
         draft: false
         prerelease: ${{ github.ref_type != 'tag' }}
-        # Force overwrite existing canary tag
         make_latest: ${{ github.ref_type == 'tag' && 'true' || 'false' }}
         generate_release_notes: true
-        # Allow overwriting existing release assets
-        overwrite: true
+        overwrite_files: true
